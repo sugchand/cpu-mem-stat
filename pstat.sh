@@ -72,6 +72,7 @@ function main() {
         res=( $(top -n 1 -c -p "$pids" | tail -n +8 | awk '{$1=$1;print}') )
         #echo  "${res[@]}"
         res=( $(echo "${res[@]}" | awk '{print $9 " " $10}') )
+        echo  "${res[@]}"
         res=( $(echo "${res[@]}"| \
              awk '{cpu=$1; mem=$2; sumcpu+=cpu ; summem+=mem} END {print sumcpu; print summem}') )
         cpu=${res[0]}
