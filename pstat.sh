@@ -68,20 +68,23 @@ function main() {
         if [ "$numpids" -eq 0 ]; then
             break
         fi
-        pids=$(join_by , "${pids[@]}")
-        res=( $(top -n 1 -c -p "$pids" | tail -n +8 | awk '{$1=$1;print}') )
-        #echo  "${res[@]}"
-        res=( $(echo "${res[@]}" | awk '{print $9 " " $10}') )
-        echo  "${res[@]}"
-        res=( $(echo "${res[@]}"| \
-             awk '{cpu=$1; mem=$2; sumcpu+=cpu ; summem+=mem} END {print sumcpu; print summem}') )
-        cpu=${res[0]}
-        mem=${res[1]}
-        if [ "$(echo " $res_cpu < $cpu " | bc -l)" == 1 ]; then
-            res_cpu=$cpu
+        pids=$(join_by \| "${pids[@]}")
+        mapfile -t res < <(ps -o pid,%cpu,%mem,cmd --noheader | grep -E "$pids" | awk '{print $2 " " $3}')
+        sumcpu=0
+        summem=0
+        for data in "${res[@]}"
+        do
+            cpu=$(echo $data | head -n1 | awk '{print $1;}')
+            mem=$(echo $data | head -n1 | awk '{print $2;}')
+            sumcpu=$(echo " $sumcpu + $cpu " | bc -l)
+            summem=$(echo " $summem + $mem " | bc -l)
+        done
+        echo "%CPU: $sumcpu, %MEM: $summem"
+        if [ "$(echo " $res_cpu < $sumcpu " | bc -l)" == 1 ]; then
+            res_cpu=$sumcpu
         fi
-        if [ "$(echo " $res_mem < $mem " | bc -l)" == 1 ]; then
-            res_mem=$mem
+        if [ "$(echo " $res_mem < $summem " | bc -l)" == 1 ]; then
+            res_mem=$summem
         fi
         sleep 1
         #Check again, if the process is still active.
